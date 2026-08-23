@@ -1,4 +1,4 @@
-import { NextResponse } from "next";
+import { NextResponse } from "next/server";
 import pdfParse from "pdf-parse";
 import { extractTeamsFromPdf, normalizeTeamName } from "../../../lib/pdf";
 import { resolveClub } from "../../../lib/fpf";

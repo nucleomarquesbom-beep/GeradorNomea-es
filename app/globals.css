@@ -1,54 +1,186 @@
 :root {
-  --bg: #f5f6f8;
+  --background: #f5f6f8;
+  --foreground: #111827;
   --card: #ffffff;
-  --text: #101318;
-  --muted: #68707c;
-  --line: #e4e7eb;
+  --border: #e5e7eb;
+  --muted: #6b7280;
   --accent: #111827;
-  --success: #147a4b;
-  --warning: #9a6700;
-  --danger: #b42318;
+  --success: #166534;
+  --warning: #92400e;
+  --danger: #991b1b;
 }
+
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
-body { min-height: 100vh; }
+
+html, body { margin: 0; padding: 0; min-height: 100%; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 a { color: inherit; }
-.page { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0 40px; }
+
+.page {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0;
+}
+
 .hero { margin-bottom: 28px; }
-.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .14em; color: var(--muted); }
-h1 { font-size: clamp(38px, 7vw, 64px); line-height: .98; letter-spacing: -.045em; margin: 12px 0 18px; }
-.hero p { max-width: 680px; color: var(--muted); font-size: 18px; line-height: 1.55; }
-.card, .club-card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 12px 40px rgba(16, 24, 40, .05); }
-.upload-card { padding: 22px; display: grid; gap: 16px; }
-.dropzone { min-height: 190px; border: 2px dashed #cdd2d8; border-radius: 17px; display: grid; place-items: center; align-content: center; gap: 8px; cursor: pointer; text-align: center; }
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: var(--muted);
+}
+
+h1 {
+  font-size: clamp(34px, 6vw, 58px);
+  line-height: 1;
+  margin: 10px 0 16px;
+}
+
+.hero p {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 17px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.05);
+}
+
+.dropzone {
+  min-height: 180px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-align: center;
+  gap: 8px;
+}
+
 .dropzone input { display: none; }
-.dropzone strong { font-size: 18px; }
+
+.upload-icon {
+  font-size: 30px;
+  line-height: 1;
+}
+
 .dropzone small { color: var(--muted); }
-.upload-icon { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #f0f1f3; font-size: 22px; }
-.primary { border: 0; border-radius: 13px; padding: 15px 18px; background: var(--accent); color: white; font-size: 15px; font-weight: 800; cursor: pointer; }
+
+.primary {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 15px 18px;
+  margin-top: 16px;
+  background: var(--accent);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .primary:disabled { opacity: .45; cursor: not-allowed; }
-.message { margin: 0; color: var(--muted); text-align: center; }
-.results { margin-top: 24px; display: grid; gap: 12px; }
-.club-card { padding: 18px; display: flex; gap: 20px; align-items: center; }
-.logo-wrap { width: 92px; height: 92px; flex: 0 0 92px; border-radius: 18px; background: #f7f7f8; display: grid; place-items: center; overflow: hidden; }
-.logo-wrap img { max-width: 78px; max-height: 78px; object-fit: contain; }
-.no-logo { font-size: 28px; color: #a0a6ad; }
-.club-info { min-width: 0; }
-.club-info h2 { margin: 5px 0 5px; font-size: 20px; }
-.original { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
-.status { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+
+.message {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f3f4f6;
+}
+
+.results {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.club-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 18px;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.logo-wrap {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  background: #fafafa;
+  border-radius: 12px;
+}
+
+.logo-wrap img {
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+}
+
+.no-logo {
+  font-size: 30px;
+  color: var(--muted);
+}
+
+.club-info h2 {
+  margin: 6px 0;
+  font-size: 20px;
+}
+
+.club-info p {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.detail { font-size: 13px; }
+
+.status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
 .status.found { color: var(--success); }
 .status.ambiguous { color: var(--warning); }
 .status.not_found, .status.error { color: var(--danger); }
-.candidates { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
-.candidate { border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; display: flex; align-items: center; gap: 7px; font-size: 13px; }
-.candidate img { width: 24px; height: 24px; object-fit: contain; }
-footer { padding: 28px 4px 0; color: var(--muted); font-size: 13px; }
-footer a { font-weight: 700; }
-@media (max-width: 600px) {
-  .page { padding-top: 36px; }
-  .club-card { align-items: flex-start; }
-  .logo-wrap { width: 70px; height: 70px; flex-basis: 70px; }
-  .logo-wrap img { max-width: 58px; max-height: 58px; }
+
+.candidate {
+  display: inline-block;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 6px 6px 0 0;
+  font-size: 13px;
 }
-.error-detail { color: var(--danger); word-break: break-word; }
+
+footer {
+  padding: 28px 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .page { width: min(100% - 20px, 1100px); padding-top: 32px; }
+  .club-card { grid-template-columns: 72px 1fr; }
+  .logo-wrap { width: 72px; height: 72px; }
+  .logo-wrap img { width: 62px; height: 62px; }
+}

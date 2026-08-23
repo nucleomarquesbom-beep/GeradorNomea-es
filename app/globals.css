@@ -51,3 +51,4 @@ footer a { font-weight: 700; }
   .logo-wrap { width: 70px; height: 70px; flex-basis: 70px; }
   .logo-wrap img { max-width: 58px; max-height: 58px; }
 }
+.error-detail { color: var(--danger); word-break: break-word; }

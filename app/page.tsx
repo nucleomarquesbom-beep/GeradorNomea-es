@@ -114,6 +114,7 @@ export default function Home() {
 
                 <h2>{item.club?.name || item.normalized}</h2>
                 <p className="original">PDF: {item.original}</p>
+                {item.message && <p className="original error-detail">{item.message}</p>}
 
                 {item.status === "ambiguous" && item.candidates?.length ? (
                   <div className="candidates">

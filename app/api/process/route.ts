@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import pdfParse from "pdf-parse";
-import { extractTeamsFromPdf, normalizeTeamName } from "../../../lib/pdf";
+import { extractTeamsFromPdf, normalizeTeamName, parseFpfPdf } from "../../../lib/pdf";
 import { resolveClub } from "../../../lib/fpf";
 
 export const runtime = "nodejs";
@@ -36,26 +35,26 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = await pdfParse(buffer);
-
+    const parsed = await parseFpfPdf(buffer);
     const teams = extractTeamsFromPdf(parsed.text);
 
     const results = [];
 
-    for (const original of teams) {
-      const normalized = normalizeTeamName(original);
-      const resolved = await resolveClub(normalized);
+    // Resolve in parallel, but keep one result per unique team.
+    const resolved = await Promise.all(
+      teams.map(async (original) => {
+        const normalized = normalizeTeamName(original);
+        const result = await resolveClub(normalized);
+        return { original, normalized, ...result };
+      })
+    );
 
-      results.push({
-        original,
-        normalized,
-        ...resolved,
-      });
-    }
+    results.push(...resolved);
 
     return NextResponse.json({
       ok: true,
       pages: parsed.numpages,
+      teamCount: results.length,
       results,
     });
   } catch (error) {
@@ -64,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Não foi possível ler o PDF. Confirma que é um PDF com texto selecionável.",
+          "Não foi possível ler o PDF. Confirma que é um PDF de texto da FPF.",
       },
       { status: 500 }
     );

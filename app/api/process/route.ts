@@ -38,11 +38,8 @@ export async function POST(request: Request) {
     const parsed = await parseFpfPdf(buffer);
     const teams = extractTeamsFromPdf(parsed.text);
 
-    // Do NOT send hundreds of requests to FPF at once. The real FPF page
-    // searches one team at a time; a huge Promise.all is easily throttled.
-    // Keep a small, predictable concurrency and preserve the PDF order.
     const results = new Array(teams.length);
-    const concurrency = 2;
+    const concurrency = 4;
     let nextIndex = 0;
 
     async function worker() {
@@ -53,7 +50,12 @@ export async function POST(request: Request) {
         const original = teams[index];
         const normalized = normalizeTeamName(original);
         const result = await resolveClub(normalized);
-        results[index] = { original, normalized, ...result };
+
+        results[index] = {
+          original,
+          normalized,
+          ...result,
+        };
       }
     }
 
@@ -76,7 +78,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Não foi possível ler o PDF. Confirma que é um PDF de texto da FPF.",
+          error instanceof Error
+            ? error.message
+            : "Não foi possível processar o PDF.",
       },
       { status: 500 }
     );

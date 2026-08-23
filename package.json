@@ -1,6 +1,6 @@
 {
-  "name": "fpf-escudos",
-  "version": "3.1.0",
+  "name": "gerador-nomeacoes-fpf",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

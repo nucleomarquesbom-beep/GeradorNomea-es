@@ -1,11 +1,12 @@
 {
   "name": "fpf-escudos",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "fpf:index": "node scripts/build-fpf-index.mjs"
   },
   "dependencies": {
     "next": "^16.0.1",
@@ -17,6 +18,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "playwright": "^1.55.0",
     "typescript": "^5.7.2"
   }
 }

@@ -12,13 +12,12 @@ type ResolveResult = {
   message?: string;
 };
 
-const FPF_RESULTS_ORIGIN = "https://resultados.fpf.pt";
-const FPF_CLUBS_INDEX = `${FPF_RESULTS_ORIGIN}/Club`;
-const CACHE_MS = Number(process.env.FPF_CACHE_SECONDS || 21600) * 1000;
-
-let directoryCache:
-  | { expires: number; clubs: Club[] }
-  | null = null;
+// This is the same endpoint used by the FPF Clubs page when a human types
+// a name in "Nome da Equipa" and presses "Pesquisar".
+const FPF_SEARCH_URL =
+  "https://www.fpf.pt/DesktopModules/MVC/SearchClubs/Default/GetClubsByName";
+const FPF_SITE_ORIGIN = "https://www.fpf.pt";
+const FPF_IMAGE_ORIGIN = "https://imagehandler.fpf.pt";
 
 function cleanHtmlText(value: string): string {
   return value
@@ -34,23 +33,7 @@ function cleanHtmlText(value: string): string {
 }
 
 function absoluteUrl(value: string): string {
-  return new URL(value, FPF_RESULTS_ORIGIN).toString();
-}
-
-async function getHtml(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 FPF-Escudos/2.0",
-      "Accept": "text/html,application/xhtml+xml",
-    },
-    next: { revalidate: 21600 },
-  });
-
-  if (!response.ok) {
-    throw new Error(`FPF HTTP ${response.status}: ${url}`);
-  }
-
-  return response.text();
+  return new URL(value, FPF_SITE_ORIGIN).toString();
 }
 
 function normalizeForMatch(value: string): string {
@@ -72,9 +55,7 @@ function scoreName(query: string, candidate: string): number {
   if (q === c) return 1000;
 
   const qTokens = q.split(" ");
-  const cTokens = c.split(" ");
-  const cSet = new Set(cTokens);
-
+  const cSet = new Set(c.split(" "));
   const common = qTokens.filter((token) => cSet.has(token));
   const coverage = common.length / qTokens.length;
 
@@ -84,150 +65,99 @@ function scoreName(query: string, candidate: string): number {
   return Math.round(coverage * 700);
 }
 
-function extractAssociations(html: string): string[] {
-  const ids = new Set<string>();
-  const re = /href=["'](?:https?:\/\/resultados\.fpf\.pt)?\/Club\/Club\?associationId=(\d+)["']/gi;
-  let match: RegExpExecArray | null;
+async function searchFpfByName(searchText: string): Promise<Club[]> {
+  const response = await fetch(FPF_SEARCH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=UTF-8",
+      Accept: "application/json, text/plain, */*",
+      "X-Requested-With": "XMLHttpRequest",
+      Referer: `${FPF_SITE_ORIGIN}/pt/competicoes/clubes`,
+      Origin: FPF_SITE_ORIGIN,
+      "User-Agent": "Mozilla/5.0 FPF-Escudos",
+    },
+    body: JSON.stringify({ searchText }),
+    cache: "no-store",
+  });
 
-  while ((match = re.exec(html))) {
-    ids.add(match[1]);
+  if (!response.ok) {
+    throw new Error(`FPF GetClubsByName HTTP ${response.status}`);
   }
 
-  return [...ids];
+  const data: unknown = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error("Resposta inesperada do GetClubsByName da FPF.");
+  }
+
+  return data
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+
+      const id = String(row.Id ?? "").trim();
+      const name = String(row.Text ?? "").trim();
+      const rawUrl = String(row.Url ?? "").trim();
+
+      if (!id || !name || !rawUrl) return null;
+
+      return {
+        id,
+        name,
+        url: absoluteUrl(rawUrl),
+      } satisfies Club;
+    })
+    .filter((club): club is Club => club !== null);
 }
 
-function extractClubsFromAssociationPage(html: string): Club[] {
-  const clubs: Club[] = [];
-  const seen = new Set<string>();
+async function getClubPage(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      Referer: `${FPF_SITE_ORIGIN}/pt/competicoes/clubes`,
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36",
+    },
+    cache: "no-store",
+  });
 
-  const re =
-    /<a[^>]+href=["'](?:https?:\/\/resultados\.fpf\.pt)?\/Club\/Details\?clubId=(\d+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-
-  let match: RegExpExecArray | null;
-
-  while ((match = re.exec(html))) {
-    const id = match[1];
-    const name = cleanHtmlText(match[2]);
-
-    if (!name || name.length < 2) continue;
-    if (seen.has(id)) continue;
-
-    seen.add(id);
-    clubs.push({
-      id,
-      name,
-      url: `${FPF_RESULTS_ORIGIN}/Club/Details?clubId=${id}`,
-    });
+  if (!response.ok) {
+    throw new Error(`FPF club page HTTP ${response.status}: ${url}`);
   }
 
-  return clubs;
+  return response.text();
 }
 
-function extractLogoFromClubPage(html: string, clubId: string): string | undefined {
-  // Prefer an image whose alt/title contains the club name.
-  const imageRe =
-    /<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*(?:alt|title)=["']([^"']+)["'][^>]*>/gi;
+function extractFpfOrganizationLogo(html: string): string | undefined {
+  // The club page renders the official crest through:
+  // https://imagehandler.fpf.pt/ScoreImageHandler.ashx?type=Organization&id=XXXX
+  // It may occur in src, data-src or HTML-encoded attributes.
+  const decoded = html.replace(/&amp;/gi, "&");
+  const re = /(?:https?:)?\/\/imagehandler\.fpf\.pt\/ScoreImageHandler\.ashx\?[^"'<>\s]*type=Organization[^"'<>\s]*id=(\d+)[^"'<>\s]*/i;
+  const match = decoded.match(re);
 
-  let match: RegExpExecArray | null;
-  while ((match = imageRe.exec(html))) {
-    const src = match[1];
-    const label = cleanHtmlText(match[2]);
+  if (!match) return undefined;
 
-    if (
-      label &&
-      !/google play|app store/i.test(label) &&
-      /\.(png|jpe?g|webp|svg)(\?|$)/i.test(src)
-    ) {
-      return absoluteUrl(src);
-    }
-  }
-
-  // Also support alt/title appearing before src.
-  const imageRe2 =
-    /<img[^>]+(?:alt|title)=["']([^"']+)["'][^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/gi;
-
-  while ((match = imageRe2.exec(html))) {
-    const label = cleanHtmlText(match[1]);
-    const src = match[2];
-
-    if (
-      label &&
-      !/google play|app store/i.test(label) &&
-      /\.(png|jpe?g|webp|svg)(\?|$)/i.test(src)
-    ) {
-      return absoluteUrl(src);
-    }
-  }
-
-  // Official FPF image-handler fallback. It is only used if the official
-  // results page does not expose the image URL in its HTML.
-  return `https://fpfimagehandler.fpf.pt/FPFImageHandler.ashx?type=Club&id=${encodeURIComponent(clubId)}`;
+  const id = match[1];
+  return `${FPF_IMAGE_ORIGIN}/ScoreImageHandler.ashx?type=Organization&id=${encodeURIComponent(id)}`;
 }
 
 async function enrichClub(club: Club): Promise<Club> {
-  try {
-    const html = await getHtml(club.url);
-    const logoUrl = extractLogoFromClubPage(html, club.id);
-    return logoUrl ? { ...club, logoUrl } : club;
-  } catch {
-    return {
-      ...club,
-      logoUrl:
-        `https://fpfimagehandler.fpf.pt/FPFImageHandler.ashx?type=Club&id=${encodeURIComponent(club.id)}`,
-    };
-  }
-}
+  const html = await getClubPage(club.url);
+  const logoUrl = extractFpfOrganizationLogo(html);
 
-async function loadDirectory(): Promise<Club[]> {
-  if (directoryCache && Date.now() < directoryCache.expires) {
-    return directoryCache.clubs;
-  }
-
-  const indexHtml = await getHtml(FPF_CLUBS_INDEX);
-  const associationIds = extractAssociations(indexHtml);
-
-  if (!associationIds.length) {
-    throw new Error("A FPF não devolveu as associações do diretório.");
-  }
-
-  const pages = await Promise.all(
-    associationIds.map(async (id) => {
-      try {
-        return await getHtml(
-          `${FPF_RESULTS_ORIGIN}/Club/Club?associationId=${id}`
-        );
-      } catch (error) {
-        console.warn("Falha numa associação FPF", id, error);
-        return "";
-      }
-    })
-  );
-
-  const map = new Map<string, Club>();
-
-  for (const html of pages) {
-    for (const club of extractClubsFromAssociationPage(html)) {
-      map.set(club.id, club);
-    }
-  }
-
-  const clubs = [...map.values()];
-  directoryCache = {
-    expires: Date.now() + CACHE_MS,
-    clubs,
-  };
-
-  return clubs;
+  return logoUrl ? { ...club, logoUrl } : club;
 }
 
 export async function resolveClub(query: string): Promise<ResolveResult> {
   try {
-    const clubs = await loadDirectory();
+    // This intentionally mirrors the human workflow on fpf.pt:
+    // write the team name in "Nome da Equipa" and press "Pesquisar".
+    const clubs = await searchFpfByName(query);
 
     if (!clubs.length) {
       return {
         status: "not_found",
-        message: "A lista de clubes da FPF veio vazia.",
+        message: `A FPF não encontrou nenhum clube para "${query}".`,
       };
     }
 
@@ -236,39 +166,47 @@ export async function resolveClub(query: string): Promise<ResolveResult> {
       .sort((a, b) => b.score - a.score);
 
     const best = ranked[0];
-
     if (!best || best.score < 350) {
-      return { status: "not_found" };
+      return {
+        status: "not_found",
+        message: `A FPF devolveu resultados, mas nenhum corresponde suficientemente a "${query}".`,
+      };
     }
 
+    const second = ranked[1];
     const close = ranked
       .filter((item) => item.score >= best.score - 50)
       .slice(0, 5)
       .map((item) => item.club);
 
-    if (
-      close.length > 1 &&
-      scoreName(query, close[1].name) >= best.score - 25
-    ) {
+    if (second && second.score >= best.score - 25) {
       return {
         status: "ambiguous",
         candidates: close,
+        message: "A FPF devolveu mais do que uma correspondência próxima.",
       };
     }
 
-    const club = await enrichClub(best.club);
-
-    return {
-      status: "found",
-      club,
-    };
+    try {
+      const club = await enrichClub(best.club);
+      return { status: "found", club };
+    } catch (error) {
+      // The club itself was found by the official FPF search. If the detail
+      // page is temporarily unavailable, keep that result rather than
+      // inventing an image URL.
+      console.warn("FPF club detail page unavailable", best.club.url, error);
+      return {
+        status: "found",
+        club: best.club,
+        message: "Clube encontrado na FPF, mas não foi possível obter o escudo agora.",
+      };
+    }
   } catch (error) {
     console.error("FPF resolver error:", error);
-
     return {
       status: "error",
       message:
-        "Não foi possível consultar o diretório oficial de clubes da FPF neste momento.",
+        "Não foi possível consultar a pesquisa oficial de clubes da FPF neste momento.",
     };
   }
 }

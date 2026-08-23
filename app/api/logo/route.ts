@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     "resultados.fpf.pt",
     "www.fpf.pt",
     "fpfimagehandler.fpf.pt",
+    "imagehandler.fpf.pt",
   ]);
 
   if (!allowedHosts.has(target.hostname)) {

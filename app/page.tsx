@@ -63,7 +63,7 @@ export default function Home() {
         <h1>Escudos das equipas</h1>
         <p>
           Carrega uma nomeação em PDF. A aplicação lê apenas os jogos,
-          identifica as equipas e procura os clubes no diretório oficial da FPF.
+          identifica as equipas e pesquisa cada equipa diretamente no campo "Nome da Equipa" da FPF e usa a página oficial do clube para obter o escudo.
         </p>
       </section>
 

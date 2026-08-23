@@ -1,7 +1,7 @@
 import { NextResponse } from "next";
 import pdfParse from "pdf-parse";
-import { extractTeamsFromPdf, normalizeTeamName } from "../../../../lib/pdf";
-import { resolveClub } from "../../../../lib/fpf";
+import { extractTeamsFromPdf, normalizeTeamName } from "../../../lib/pdf";
+import { resolveClub } from "../../../lib/fpf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     // searches one team at a time; a huge Promise.all is easily throttled.
     // Keep a small, predictable concurrency and preserve the PDF order.
     const results = new Array(teams.length);
-    const concurrency = 4;
+    const concurrency = 2;
     let nextIndex = 0;
 
     async function worker() {

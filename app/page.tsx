@@ -63,13 +63,19 @@ export default function Home() {
         <h1>Escudos das equipas</h1>
         <p>
           Carrega uma nomeação em PDF. A aplicação lê apenas os jogos,
-          identifica as equipas e pesquisa cada equipa diretamente no campo "Nome da Equipa" da FPF e usa a página oficial do clube para obter o escudo.
+          normaliza os nomes e procura os clubes no índice oficial da FPF.
+          Os escudos são apresentados diretamente a partir do servidor de
+          imagens da FPF.
         </p>
       </section>
 
       <section className="card upload-card">
         <label className="dropzone">
-          <input type="file" accept="application/pdf,.pdf" onChange={onFileChange} />
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={onFileChange}
+          />
           <span className="upload-icon">↑</span>
           <strong>{file ? file.name : "Escolher PDF"}</strong>
           <small>PDF de nomeações da FPF</small>
@@ -80,7 +86,9 @@ export default function Home() {
           disabled={!file || loading}
           onClick={processPdf}
         >
-          {loading ? "A ler PDF e a consultar a FPF…" : "Ler PDF e procurar escudos"}
+          {loading
+            ? "A ler PDF e a procurar equipas…"
+            : "Ler PDF e procurar escudos"}
         </button>
 
         {message && <p className="message">{message}</p>}
@@ -89,12 +97,17 @@ export default function Home() {
       {results.length > 0 && (
         <section className="results">
           {results.map((item, index) => (
-            <article className="club-card" key={`${item.normalized}-${index}`}>
+            <article
+              className="club-card"
+              key={`${item.normalized}-${index}`}
+            >
               <div className="logo-wrap">
                 {item.club?.logoUrl ? (
                   <img
-                    src={`/api/logo?url=${encodeURIComponent(item.club.logoUrl)}`}
+                    src={item.club.logoUrl}
                     alt={`Escudo ${item.club.name}`}
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
                   />
                 ) : (
                   <span className="no-logo">?</span>
@@ -114,16 +127,23 @@ export default function Home() {
 
                 <h2>{item.club?.name || item.normalized}</h2>
                 <p className="original">PDF: {item.original}</p>
-                {item.message && <p className="original error-detail">{item.message}</p>}
+                {item.message && (
+                  <p className="original error-detail">{item.message}</p>
+                )}
 
-                {item.status === "ambiguous" && item.candidates?.length ? (
+                {item.status === "ambiguous" &&
+                item.candidates?.length ? (
                   <div className="candidates">
                     {item.candidates.map((candidate, i) => (
-                      <div className="candidate" key={`${candidate.id}-${i}`}>
+                      <div
+                        className="candidate"
+                        key={`${candidate.id}-${i}`}
+                      >
                         {candidate.logoUrl && (
                           <img
-                            src={`/api/logo?url=${encodeURIComponent(candidate.logoUrl)}`}
+                            src={candidate.logoUrl}
                             alt=""
+                            loading="lazy"
                           />
                         )}
                         <span>{candidate.name}</span>
@@ -133,7 +153,11 @@ export default function Home() {
                 ) : null}
 
                 {item.club?.url && (
-                  <a href={item.club.url} target="_blank" rel="noreferrer">
+                  <a
+                    href={item.club.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Abrir clube na FPF ↗
                   </a>
                 )}
@@ -152,7 +176,7 @@ export default function Home() {
         >
           FPF — Clubes
         </a>{" "}
-        e Centro de Resultados oficial da FPF.
+        e servidor oficial de imagens da FPF.
       </footer>
     </main>
   );

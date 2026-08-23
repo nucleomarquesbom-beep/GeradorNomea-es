@@ -38,18 +38,31 @@ export async function POST(request: Request) {
     const parsed = await parseFpfPdf(buffer);
     const teams = extractTeamsFromPdf(parsed.text);
 
-    const results = [];
+    // Do NOT send hundreds of requests to FPF at once. The real FPF page
+    // searches one team at a time; a huge Promise.all is easily throttled.
+    // Keep a small, predictable concurrency and preserve the PDF order.
+    const results = new Array(teams.length);
+    const concurrency = 4;
+    let nextIndex = 0;
 
-    // Resolve in parallel, but keep one result per unique team.
-    const resolved = await Promise.all(
-      teams.map(async (original) => {
+    async function worker() {
+      while (true) {
+        const index = nextIndex++;
+        if (index >= teams.length) return;
+
+        const original = teams[index];
         const normalized = normalizeTeamName(original);
         const result = await resolveClub(normalized);
-        return { original, normalized, ...result };
-      })
-    );
+        results[index] = { original, normalized, ...result };
+      }
+    }
 
-    results.push(...resolved);
+    await Promise.all(
+      Array.from(
+        { length: Math.min(concurrency, teams.length) },
+        () => worker()
+      )
+    );
 
     return NextResponse.json({
       ok: true,
